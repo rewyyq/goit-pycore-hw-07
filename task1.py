@@ -28,7 +28,7 @@ class Name(Field):
     def __init__(self, value):
         if not value or not value.strip():
             raise ValueError("Name cannot be empty")
-        super().__init__(value.strip())
+        super().__init__(value.strip().capitalize())
 
 class Phone(Field):
     def __init__(self, value):
@@ -76,10 +76,11 @@ class AddressBook(UserDict):
     def add_record(self, record):
         self.data[record.name.value] = record
     def find(self, name):
-        return self.data.get(name)
+        return self.data.get(name.strip().capitalize())
     def delete(self, name):
-        if name in self.data:
-            del self.data[name]
+        normalized_name = name.strip().capitalize()
+        if normalized_name in self.data:
+            del self.data[normalized_name]
     def get_upcoming_birthdays(self):
         res = []
         today = datetime.today().date()
@@ -93,7 +94,7 @@ class AddressBook(UserDict):
             if days_difference <= -3:               
                 user_birthday = user_birthday.replace(year=today.year + 1)
                 days_difference = (user_birthday - today).days
-            if -2 <= days_difference <= 6:           
+            if -2 <= days_difference <= 7:           
                 current_week_day = user_birthday.weekday()
                 if current_week_day == 5:
                     new_date = user_birthday + timedelta(days=2)    
@@ -101,7 +102,8 @@ class AddressBook(UserDict):
                     new_date = user_birthday + timedelta(days=1)
                 else:
                     new_date = user_birthday
-                res.append({"name": username, "congratulation_date": new_date.strftime("%d.%m.%Y")})
+                if new_date >= today:
+                    res.append({"name": username, "congratulation_date": new_date.strftime("%d.%m.%Y")})
         return res
 
 
@@ -139,14 +141,12 @@ def add_contact(args, book: AddressBook):
 
 @input_error
 def change_contact(args, book: AddressBook):
-    name, old_phone, new_phone = args
+    name, old_phone, new_phone, *_ = args
     record = book.find(name)
     if record is None:
         raise KeyError
-    if old_phone and new_phone:
-        record.edit_phone(old_phone, new_phone)
-        message = "Contact changed"
-    return message
+    record.edit_phone(old_phone, new_phone)
+    return "Contact changed."
 
 @input_error
 def show_phone(args, book: AddressBook):
@@ -182,7 +182,7 @@ def show_birthday(args, book: AddressBook):
     return "Birthday not set"
 
 @input_error
-def birthdays(book: AddressBook):
+def birthdays(args, book: AddressBook):
     upcoming = book.get_upcoming_birthdays()
     if not upcoming:
         return "No birthdays in the next week"
@@ -225,7 +225,7 @@ def main():
             print(show_birthday(args, book))
 
         elif command == "birthdays":
-            print(birthdays(book))
+            print(birthdays(args, book))
         else:
             print("Invalid command.")
 
